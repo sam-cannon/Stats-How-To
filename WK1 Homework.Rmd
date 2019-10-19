@@ -1,0 +1,115 @@
+---
+title: "WK1 Homework ANOVA"
+author: "Sam Cannon"
+date: "September 30, 2019"
+output: word_document
+---
+# Week 1 Homework ANOVA
+## 
+
+```{r}
+# ________________________________
+library(foreign)
+library(ggplot2)
+library(psych)
+library(pastecs)
+library(dplyr)
+setwd("C:/Users/Sam Cannon/Desktop/R/Data Sets/new_datasets_7e")
+#import the data
+data <- read.spss("ChickFlick.sav", to.data.frame = T)
+```
+
+
+
+```{r}
+#producing Shapiro-Wilk, Kurtosis, and Skew data for Females, Males, and total dataframe 
+males <- filter(data, GENDER == 'Male') 
+females <- filter(data, GENDER == 'Female')
+
+shapiro.test(males$AROUSAL)
+
+shapiro.test(females$AROUSAL)
+
+#shapiro test for the whole dataframe
+shapiro.test(data$AROUSAL)
+
+#looking at skew and kurtosis for each gender
+data.frame(stat.desc(males$AROUSAL, norm = TRUE))
+data.frame(stat.desc(females$AROUSAL, norm = TRUE))
+
+#looking at skew and kurtosis for entire dataframe
+data.frame(stat.desc(data$AROUSAL, norm = TRUE))
+```
+
+We can see from the Shapiro-Wilk tests for arousal with females and males, as well as the entire dataframe, that neither is significant with respect to kurtosis and skewness. We are able to assume normality within these data points. 
+
+
+```{r}
+ggplot(data, aes(x = AROUSAL)) + geom_histogram(aes(y =..density..),
+                   breaks = seq(0, 50, by = 10), 
+                   colour = "black", 
+                   fill = "white") +
+stat_function(fun = dnorm, args = list(mean = mean(data$AROUSAL), sd = sd(data$AROUSAL))) + ggtitle("Distribution of Arousal Variable") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+box <- ggplot(data, aes(GENDER, AROUSAL)) + geom_boxplot() + ggtitle('Males vs. Females') + theme(plot.title = element_text(hjust = 0.5))
+box 
+```
+
+
+```{r}
+ggplot(data, aes(x = AROUSAL)) + geom_histogram(aes(y =..density..),
+                   breaks = seq(0, 50, by = 10), 
+                   colour = "black", 
+                   fill = "white") +
+stat_function(fun = dnorm, args = list(mean = mean(data$AROUSAL), sd = sd(data$AROUSAL))) + facet_wrap(~GENDER) + ggtitle("Males vs. Females") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+```{r}
+ggplot(males, aes(x = AROUSAL)) + geom_histogram(aes(y =..density..),
+                   breaks = seq(0, 50, by = 10), 
+                   colour = "black", 
+                   fill = "white") +
+stat_function(fun = dnorm, args = list(mean = mean(males$AROUSAL), sd = sd(males$AROUSAL))) + ggtitle("Distribution of Males Arousal Variable") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+ggplot(females, aes(x = AROUSAL)) + geom_histogram(aes(y =..density..),
+                   breaks = seq(0, 50, by = 10), 
+                   colour = "black", 
+                   fill = "white") +
+stat_function(fun = dnorm, args = list(mean = mean(females$AROUSAL), sd = sd(females$AROUSAL))) + ggtitle("Distribution of Female Arousal Variable") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+
+
+```{r}
+#creating a function syntax, DRY typing 
+normality <- function(data, column) {
+  a <- data.frame(stat.desc(column, norm = TRUE))
+  #the shapiro test is not necessary, but included anyway, since its results are in stat.desc
+  b <-shapiro.test(column)
+  c <- ggplot(data, aes(column)) + geom_histogram(aes(y =..density..),
+                   breaks = seq(0, 50, by = 10), 
+                   colour = "black", 
+                   fill = "white") +
+  stat_function(fun = dnorm, args = list(mean = mean(data$AROUSAL), sd = sd(data$AROUSAL))) 
+  print(a)
+  print(b)
+  c
+}
+#using the function
+normality(data, data$AROUSAL)
+
+```
+
+
+
+
+
+
+
+
