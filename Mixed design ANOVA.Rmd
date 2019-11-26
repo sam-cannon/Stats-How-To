@@ -1,0 +1,185 @@
+---
+title: "ANOVA HW Week 9"
+author: "Sam Cannon"
+date: "November 22, 2019"
+output: word_document
+---
+
+##Research Question;
+What are the effects of participant's gender and physical attractiveness of a speed date on the rating of interest in follow-up dates?
+
+*N* = 20
+*N* = 2 levels of gender, 3 levels of attractiveness
+DV = date ratings (0-100)
+IV #1 = (Repeated mesaures variable) Personality with 3 levels: attractive, average, ugly
+IV#2 = (between groups variable) gender with 2 levels male, female
+
+
+```{r}
+library(ggplot2)
+#install.packages("compute.es")
+library(compute.es)
+library(multcomp)
+library(nlme)
+library(pastecs)
+library(reshape)
+
+setwd("C:\\Users\\Sam Cannon\\Desktop\\R\\Data Sets")
+
+df <- read.csv("GENbyATTR_181112.csv", header = TRUE)
+df2 <- read.csv("MixAtt.csv", header = TRUE)
+```
+
+### 1. Prepare the Data
+
+Reshaping the data into long format
+
+```{r}
+df_long <- melt(df, id = c("participant", "gender"), measured = c("Attr", "Avg", "Ugly"))
+names(df_long) <- c("participant", "gender", "physattr", "dateRating")
+df_long <- df_long[order(df_long$participant), ]
+```
+
+###2. Explore the data
+
+#### Graphs
+
+Looking at main effects (marginal stats) first for personality and gender separately 
+
+```{r}
+ggplot(df_long, aes(physattr, dateRating)) + stat_summary(fun.y = mean, geom = "bar", fill = "white", colour = "black") +  
+              stat_summary(fun.data = mean_cl_boot, geom = "pointrange") + labs(x = "Physical Attractiveness of Date", y = "Mean Rating of Date")
+```
+
+Now look at gender
+
+```{r}
+ggplot(df_long, aes(gender, dateRating)) + stat_summary(fun.y = mean, geom = "bar", fill = "white", colour = "black") +  
+              stat_summary(fun.data = mean_cl_boot, geom = "pointrange") + labs(x = "Gender", y = "Mean Rating of Date")
+```
+
+Now look at boxplots becuase the bars are garbage
+
+```{r}
+ggplot(df_long, aes(physattr, dateRating)) + geom_boxplot() + labs(x = "Physical Attractiveness of Date", y = "Mean Rating of Date") + 
+  facet_wrap(~gender)
+```
+
+Now look at the interactions with a line plot
+
+```{r}
+ggplot(df_long, aes(physattr, dateRating, colour = gender)) + stat_summary(fun.y = mean, geom = "point") + 
+  stat_summary(fun.y = mean, geom  = "line", aes(group = gender)) + stat_summary(fun.data = mean_cl_boot, geom = "errorbar", width = .2) + 
+  labs(x = "Physical Attractiveness of Date", y = "Mean Rating of Date", colour = "Gender") + scale_y_continuous(limits = c(0, 100))
+```
+
+####Descriptives
+
+First look at gender collapsed across personality
+
+```{r}
+options(digits = 3)
+by(df_long$dateRating, list(df_long$gender), stat.desc, norm = T, basic = T)
+```
+
+
+Now look at personality collapsed across gender
+
+```{r}
+options(digits = 3)
+by(df_long$dateRating, list(df_long$physattr), stat.desc, norm = T, basic = T)
+```
+
+Now by interaction cells
+
+```{r}
+options(digits = 3)
+by(df_long$dateRating, list(df_long$gender, df_long$physattr), stat.desc, norm = T, basic = T)
+```
+
+
+###3. Preliminary Analyses
+
+Setting up contrasts
+
+```{r}
+ATTRvsAVG <- c(1, 0, 0)
+UGLYvsAVG <- c(0, 0, 1)
+contrasts(df_long$physattr) <- cbind(ATTRvsAVG, UGLYvsAVG)
+```
+
+
+
+Include a contrast for gender since this is a 2 way ANOVA, we don't have to name it since it only has 2 levels
+
+```{r}
+contrasts(df_long$gender) <- c(1, 0)
+```
+
+```{r}
+df_long$physattr
+df_long$gender
+```
+
+###4. Primary Analysis
+
+Look at overall main effects and interaction effects
+
+```{r}
+baseline <- lme(dateRating ~ 1, random = ~1|participant/gender/physattr, data = df_long, method = "ML")
+genderm <- update(baseline, .~. + gender)
+physattrm <- update(genderm, .~. + physattr)
+gender_physattrm <- update(physattrm, .~. + gender:physattr)
+
+anova(baseline, genderm, physattrm, gender_physattrm)
+```
+
+1. Degrees of freedom increases throughout 
+
+2. gender main effect was non significant, physical attractiveness was significant, and the gender:physattr interaction affect was significant
+
+3. AIC and BIC provide no support for gender main effect since they increase when gender is added into the model
+
+**Get summary of the contrasts**
+```{r}
+summary(gender_physattrm)
+```
+
+We can see that both of our interaction effects are significant, and gender is not (no surprise there)
+
+No surprises here, more attractive people were considered better dates...
+
+###Effect Sizes
+```{r}
+rcontrast <- function(t, df)
+{r <- sqrt(t^2 / (t^2 + df))
+print(paste("r = ", r))}
+
+rcontrast(.4, 18)
+rcontrast(16.1, 36)
+rcontrast(-13.4, 36)
+rcontrast(-6.9, 36)
+rcontrast(5.8, 36)
+```
+
+##Results
+
+A 2 x 3 mixed design ANOVA was conducted to evaluate the effect of gender of the participant and physical attractiveness of the speed date on the participant's date rating (an indication of interest in follow-up dates). Participant's gender, a between subjects factor, had two levels: male, female. Speed date's personality, a repeated measures factor, had three levels: attractive, average, ugly. Means and standard deviations are provided in table 1 and illustrated in the linegraph in Figure 1. 
+
+The analysis was conducted via a multilevel model in the R package *nlme.* Results suggested a non-significant gender main effect on date rating. $$\chi^{2}(2) = 75.5 p < .001$$
+
+
+Our contrasts focused on the interpretation of the gender:physical attractiveness interaction. The first compared the difference between high and average physical attractiveness for men and women: *b* = -12.5, *t*(36) = -6.9, *p* < .001, *r* = .75. The significant contrast suggested that preferences for highly attractive dates compared to averagely charismatic dates were significantly greater for males. The second contrast compared the difference between average and least physically attractive dates for men and women: *b* = 10.4, *t*(36) = 5.8, *p* < .001, *r* = .70. For both contrasts, effect sizes were large. Similarly, this statistically significant contrast suggested that even at the lower end of the physical attractiveness spectrum, preferences for averagely attractive compared to the least attractive were significantly greater for males than females. That is, gender moderated the relationship between participant's gender and physical attractiveness level of the speed date in rating follow-up interest in continued dates. 
+
+
+
+
+
+
+
+
+
+
+
+
+
